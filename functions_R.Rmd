@@ -1,0 +1,517 @@
+---
+title: "functions.R"
+author: "SVD"
+date: "7 April 2016"
+output:
+  rmdformats::readthedown:
+    highlight: kate
+    number_sections: yes
+    code_folding: show
+---
+
+
+\newpage
+
+I have attached here some functions that are great for working in R. These functions have been obtained from the web, friends, teachers and colleagues working and analyzing in R.
+
+#  To filter a dataframe to remove rows containing NA for a specific variable `column`:
+
+
+```{r}
+library(tidyverse)
+library(magrittr)
+library(broom)
+library(plyr)
+```
+
+```{r}
+
+completeFun <- function(data, desiredCols) {
+  completeVec <- complete.cases(data[, desiredCols])
+  return(data[completeVec, ])
+}
+
+# data = dataframe
+# desiredCols = name of column/s that we want to remove NA from 
+```
+
+# This function will help to re-arrange columns in a dataframe: 
+
+```{r}
+moveme <- function (invec, movecommand) {
+  movecommand <- lapply(strsplit(strsplit(movecommand, ";")[[1]], 
+                                 ",|\\s+"), function(x) x[x != ""])
+  movelist <- lapply(movecommand, function(x) {
+    Where <- x[which(x %in% c("before", "after", "first", 
+                              "last")):length(x)]
+    ToMove <- setdiff(x, Where)
+    list(ToMove, Where)
+  })
+  myVec <- invec
+  for (i in seq_along(movelist)) {
+    temp <- setdiff(myVec, movelist[[i]][[1]])
+    A <- movelist[[i]][[2]][1]
+    if (A %in% c("before", "after")) {
+      ba <- movelist[[i]][[2]][2]
+      if (A == "before") {
+        after <- match(ba, temp) - 1
+      }
+      else if (A == "after") {
+        after <- match(ba, temp)
+      }
+    }
+    else if (A == "first") {
+      after <- 0
+    }
+    else if (A == "last") {
+      after <- length(myVec)
+    }
+    myVec <- append(temp, values = movelist[[i]][[1]], after = after)
+  }
+  myVec
+}
+
+# this is primarily for vectors 
+# eg. moveMe(names(df),"g first") = will insert g as the first column
+# moveMe(names(df), "g first; a last; e before c") = will do exactly as written in the code
+# for dataframes , we need to use: df[moveMe(names(df),"g first")] 
+```
+
+
+# Will create a series of histograms for a dataframe containing only continuous variables:
+
+```{r}
+plotHistFunc <- function(x, na.rm = TRUE, ...) {
+  nm <- names(x)
+  for (i in seq_along(nm)) {
+    print(ggplot(x,aes_string(x = nm[i])) + geom_histogram(alpha = .5,fill = "mediumseagreen",col="darkblue")) }
+}
+
+
+# 1. using select in dplyr, can create a dataframe which will contain only continuous variables
+#2. Then with this function plotHistFunc(dataframe, na.rm=TRUE) we can create a series of histograms of all the variables in the dataframe.
+```
+
+# Two x two function ; Prof. Love: 
+
+```{r}
+
+`twobytwo` <-
+  function(a,b,c,d, namer1 = "Row1", namer2 = "Row2", namec1 = "Col1", namec2 = "Col2")
+    # build 2 by 2 table and run Epi library's twoby2 command to summarize
+    # from the row-by-row counts in a cross-tab
+    # upper left cell is a, upper right is b, lower left is c, lower right is d
+    # names are then given in order down the rows then across the columns
+    # use standard epidemiological format - outcomes in columns, treatments in rows
+  {
+    require(Epi)
+    .Table <- matrix(c(a, b, c, d), 2, 2, byrow=T, dimnames=list(c(namer1, namer2), c(namec1, namec2)))
+    twoby2(.Table)
+  }
+
+# as described will create a two by two table with OR,RR and RD as results
+```
+
+
+# This will create a histogram, boxplot and standard summary statistics for a variable; Prof.Love: 
+
+```{r}
+`eda6` <-
+  function(a.raw)
+  {
+    a <- na.omit(a.raw)
+    
+    if( is.null(names(a.raw) ) ){ mname = substitute(a.raw) }
+    else{ mname = names(a.raw) }
+    
+    ## Histogram and Normal Q-Q Plot  
+    par(mfrow=c(1,2))
+    hist(a, prob=T, main=paste("Histogram & Normal Fit for", mname), col="wheat", xlab=paste(mname), ylab="")
+    curve(dnorm(x, mean=mean(a), sd = sd(a)), col="red", lty=1, lwd=1.5, add=TRUE)
+    library(car)
+    qqPlot(a, main=paste("Normal Q-Q Plot for", mname), 
+           xlab="Standard Normal Quantiles", 
+           ylab=paste("Sorted ", mname, " values"), cex=1.5)
+    ## this version of a Normal Q-Q plot, including pointwise confidence intervals
+    par(mfrow=c(1,1))
+    
+    ## Boxplot    
+    boxplot(a, cex=1.5, horizontal=TRUE, main=paste("Boxplot and Mean +/- SD of", mname), xlab=paste(mname), col="wheat")
+    points(mean(a), 1.3, col="blue", pch=16, cex=1.5)
+    arrows(mean(a)-sd(a), 1.3, mean(a)+sd(a), 1.3, 
+           code=3, col="blue", angle=40, length=.1, lwd=1.5)
+    
+    ## Favorite Summary Statistics using mosaic library
+    library(mosaic, quietly=TRUE, warn.conflicts=FALSE) 
+    
+    b <- list("Variable" = mname, 
+              "Favorite Descriptive Statistics" = favstats(a), 
+              "Most Common Value(s)" = names(table(a))[table(a)==max(table(a))],
+              "Nonparametric Skew" = round((mean(a) - median(a))/sd(a),2))
+    return(b)
+    
+    rm(a, b)
+  }
+
+
+# eda6(df$var)
+```
+
+# Bootstrapped difference in means:
+
+```{r}
+`bootdif` <-
+  function(y, g, conf.level=0.95, B.reps = 2000) {
+    require(Hmisc)
+    lowq = (1 - conf.level)/2
+    g <- as.factor(g)
+    a <- attr(smean.cl.boot(y[g==levels(g)[1]], B=B.reps, reps=TRUE),'reps')
+    b <- attr(smean.cl.boot(y[g==levels(g)[2]], B=B.reps, reps=TRUE),'reps')
+    meandif <- diff(tapply(y, g, mean, na.rm=TRUE))
+    a.b <- quantile(b-a, c(lowq,1-lowq))
+    res <- c(meandif, a.b)
+    names(res) <- c('Mean Difference',lowq, 1-lowq)
+    res
+  }
+
+# here y = continuous variable, g = grouping variable
+```
+
+# Obtaining correlation plot matrix for starting linear regression, Prof.Love:
+
+```{r}
+### panel.hist function from Chang R Graphics Cookbook
+
+`panel.hist` <- function(x, ...)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(usr[1:2], 0, 1.5) )
+  h <- hist(x, plot = FALSE)
+  breaks <- h$breaks; nB <- length(breaks)
+  y <- h$counts; y <- y/max(y)
+  rect(breaks[-nB], 0, breaks[-1], y, col = "cyan", ...)
+}
+
+### panel.cor function from Chang R Graphics Cookbook
+`panel.cor` <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r <- cor(x, y)
+  txt <- format(c(r, 0.123456789), digits = digits)[1]
+  txt <- paste0(prefix, txt)
+  if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+  text(0.5, 0.5, txt, cex = cex.cor * (1 + abs(r)) / 2)
+}
+
+#pairs (~ sbp + age + weight + height, data=wcgs,main="Augmented Scatterplot Matrix",upper.panel = panel.smooth,diag.panel = panel.hist,lower.panel =panel.cor)
+
+# using the above code and inserting the variables as shown, we can get a scatterplot matrix : T.Love and Winston Chang.
+
+```
+
+
+# Code to create a `Love-plot` in ggplot2, Dr Ahmad Al-khalil : 
+
+
+
+
+Building Love Plot
+covnames <- covlist
+pre.szd <- NULL; post.szd <- NULL
+for(i in 1:length(covnames)) {
+  pre.szd[i] <- mb1$ BeforeMatching[[i]]$sdiff.pooled
+  post.szd[i] <- mb1$ AfterMatching[[i]]$sdiff.pooled
+}
+
+temp <- data.frame(pre.szd, post.szd, row.names=covnames)
+
+
+temp1 <- data.frame(pre.szd, post.szd, covnames)#combine the 3 variable into a data.base.
+library(dplyr)
+temp1<-temp1 %>% arrange(pre.szd)%>% mutate (covnames= factor(covnames,covnames)) #use dplyr mutate and arrange function to sort the covariates by pre.szd.
+library(reshape2)
+temp2<-melt(temp1,measure.vars=c("pre.szd","post.szd")) ##melt the database base to get a two level variable ("pre.szd","post.szd") that I will use in the plot.
+
+p<-ggplot(temp2, aes(value, covnames, shape= variable,colour=variable)) ## the first step is tell ggplot that I want to use temp2 database to plot the (value) variable on x axis, covnames on y axis. Then I tell it to differentiate between the plotted geom based on (variable)  which is two level categorical variable ("pre.szd","post.szd").
+
+p<-p +geom_point(size =3)+theme_bw()+labs(title="Standardized Difference Plot")+labs(x="Standardized Difference (%)")+labs(y="Covariates") # here, I tell ggplot that I want the values to be plotted as point (geom_point), I chose size 3, I change the background theme to black and white, then I label the axes.
+
+p<-p+theme(legend.title=element_blank())+scale_colour_manual(values = c("pre.szd"="red", "post.szd"="green"),labels=c("Before Matching","After Matching"))+scale_shape_discrete(labels=c("Before Matching","After Matching")) ## here, I drop the legend title, I assign specific colors to the points, I rename the legend's labels.
+
+p<-p + theme(legend.justification=c(1,0), legend.position=c(1,0)) + geom_vline(xintercept = 0,colour="blue") + geom_vline(xintercept = c(-10,10) ,colour="blue",linetype = "longdash") # I reposition the legend to right lower corner, I add the vertical lines.
+
+
+p+ coord_cartesian(xlim = c(-60, 50)) + scale_x_continuous(breaks = seq(from = -200, to = 200, by = 10)) # Finally, I change x-axis limits and change the breaks to every 10.
+
+
+
+
+# Pirate plot: 
+
+`yarrr` library: Use the pirate plot to present the RDI trifecta of data : 1. Raw data = presents all datapoints 2. Presents mean and central distribution 3. I = inferential statistics ; presents High Density Intervals using Bayesian estimates supersedes T-tests method.
+
+# Presents the confidence interval with the `SAIFS` method:
+
+```{r}
+`saifs.ci` <- 
+  function(x, n, conf.level=0.95, dig=3)
+  {
+    p.sample <- round(x/n, digits=dig)
+    
+    p1 <- x / (n+1)
+    p2 <- (x+1) / (n+1)
+    
+    var1 <- (p1*(1-p1))/n
+    se1 <- sqrt(var1)
+    var2 <- (p2*(1-p2))/n
+    se2 <- sqrt(var2)
+    
+    lowq = (1 - conf.level)/2
+    tcut <- qt(lowq, df=n-1, lower.tail=FALSE)
+    
+    lower.bound <- round(p1 - tcut*se1, digits=dig)
+    upper.bound <- round(p2 + tcut*se2, digits=dig)
+    res <- c(p.sample, lower.bound, upper.bound)
+    names(res) <- c('Sample Proportion',lowq, 1-lowq)
+    res
+  }
+
+```
+
+# RMSE and MAE: 
+
+Functions created to obtain `root mean square error` and `mean absolute error` from linear models.
+
+```{r}
+
+rmse <- function(actual,predicted)
+{
+  sqrt(mean((actual- predicted)^2))
+}
+
+mae <- function(actual,predicted)
+{
+  mean(abs(actual-predicted))
+}
+
+```
+
+# `ggsurv` function:
+
+For creating KM curves in ggplot2. Also can use `autoplot` from the the`survMisc` library. When using `ggsurv` for KM curves, use geom_ribbon to create CI bands for the groups.
+
+```{r}
+#geom_ribbon(aes(ymin = low, ymax = up, fill=group),alpha = 0.3) + ggplot2::scale_fill_discrete(guide=FALSE) ## and then use the following code to remove the legend from the plot, so that we dont have two legends.
+```
+
+
+# Creating series of box-plots with ggplot2:
+
+```{r}
+
+# This function will create sequential box-plots for all continuous variables in a dataframe. 
+# Initially create a dataframe with the categorical variable as the first column and all continuous variables after that. This can be created using the help of `moveme` function listed earlier and the `dplyr` library.
+# To use the dataframe, simply type plotBoxfunc(df).
+# The function will automatically remove those rows with missing data in each continuous variable.
+# The ggplot2 library needs to be called for the function to work. Please do that initially before running function.
+# The function will print the boxplots one below the other with legend at the right side as in the normal ggplot2 method.
+# fill color is set to categorical variable. 
+
+plotBoxfunc <- function(df,na.rm=TRUE,...){ 
+  
+  x = names(df[1,])
+  nm = names(df[,2:ncol(df)])
+  for (i in seq_along(nm)){
+    print(ggplot(df,aes_string(x = x, y = nm[i],fill=x))+ geom_boxplot() + theme_bw())
+  }
+}
+```
+
+
+# Creating publication ready graphs with ggplot2
+
+Use the `cowplot` library to create publication ready graphs with `ggplot2`. The details are available at the URL : https://cran.r-project.org/web/packages/cowplot/vignettes/introduction.html
+The `cowplot` library will create graphs which will not have any background at all. 
+
+
+
+# Changing labels in the legend:
+
+```{r}
+
+# this code will allow change in the legend labels using the code with the `fill` code (1) with this we can change the labels of the categorical labels (2) using `scale_fill_manual` code, we can change the heading of the legend as well as the color of the two density curves and also the colors in the legend.
+
+
+#p <- ggplot(p6,aes(x=ps, fill= factor(weight, labels = c("Normal","Morbidly obese")))) + geom_density(alpha=0.25)+ xlab("Propensity scores") + ylab("Density function") + ggtitle("Density plot of propensity scores in both cohorts") + scale_fill_manual(name = "Cohort", values = c("red","blue")) + theme_bw()
+
+```
+
+
+# Adding CI as ribbon in `ggsurv` function with only one legend:
+
+```{r}
+ggsurv.svd <- function(s, CI = 'def', plot.cens = T, surv.col = 'gg.def',
+                   cens.col = 'red', lty.est = 1, lty.ci = 2,
+                   cens.shape = 3, back.white = F, xlab = 'Time',
+                   ylab = 'Survival', main = ''){
+  
+  library(ggplot2)  
+  strata <- ifelse(is.null(s$strata) ==T, 1, length(s$strata))
+  stopifnot(length(surv.col) == 1 | length(surv.col) == strata)
+  stopifnot(length(lty.est) == 1 | length(lty.est) == strata)
+  
+  ggsurv.s <- function(s, CI = 'def', plot.cens = T, surv.col = 'gg.def',
+                       cens.col = 'red', lty.est = 1, lty.ci = 2,
+                       cens.shape = 3, back.white = F, xlab = 'Time',
+                       ylab = 'Survival', main = ''){
+    
+    dat <- data.frame(time = c(0, s$time),
+                      surv = c(1, s$surv),
+                      up = c(1, s$upper),
+                      low = c(1, s$lower),
+                      cens = c(0, s$n.censor))
+    dat.cens <- subset(dat, cens != 0)
+    
+    col <- ifelse(surv.col == 'gg.def', 'black', surv.col)
+    
+    pl <- ggplot(dat, aes(x = time, y = surv)) + 
+      xlab(xlab) + ylab(ylab) + ggtitle(main) + 
+      geom_step(col = col, lty = lty.est) + scale_fill_discrete(guide = FALSE)
+    
+    pl <- if(CI == T | CI == 'def') {
+      pl + geom_ribbon(aes(ymin = low, ymax = up, fill=group),alpha = 0.3)
+    } else (pl)
+    
+    pl <- if(plot.cens == T & length(dat.cens) > 0){
+      pl + geom_point(data = dat.cens, aes(y = surv), shape = cens.shape,
+                      col = cens.col)
+    } else if (plot.cens == T & length(dat.cens) == 0){
+      stop ('There are no censored observations') 
+    } else(pl)
+    
+    pl <- if(back.white == T) {pl + theme_bw()
+    } else (pl)
+    pl
+  }
+  
+  ggsurv.m <- function(s, CI = 'def', plot.cens = T, surv.col = 'gg.def',
+                       cens.col = 'red', lty.est = 1, lty.ci = 2,
+                       cens.shape = 3, back.white = F, xlab = 'Time',
+                       ylab = 'Survival', main = '') {
+    n <- s$strata
+    
+    groups <- factor(unlist(strsplit(names
+                                     (s$strata), '='))[seq(2, 2*strata, by = 2)])
+    gr.name <-  unlist(strsplit(names(s$strata), '='))[1]
+    gr.df <- vector('list', strata)
+    ind <- vector('list', strata)
+    n.ind <- c(0,n); n.ind <- cumsum(n.ind)
+    for(i in 1:strata) ind[[i]] <- (n.ind[i]+1):n.ind[i+1]
+    
+    for(i in 1:strata){
+      gr.df[[i]] <- data.frame(
+        time = c(0, s$time[ ind[[i]] ]),
+        surv = c(1, s$surv[ ind[[i]] ]),
+        up = c(1, s$upper[ ind[[i]] ]), 
+        low = c(1, s$lower[ ind[[i]] ]),
+        cens = c(0, s$n.censor[ ind[[i]] ]),
+        group = rep(groups[i], n[i] + 1)) 
+    }
+    
+    dat <- do.call(rbind, gr.df)
+    dat.cens <- subset(dat, cens != 0)
+    
+    pl <- ggplot(dat, aes(x = time, y = surv, group = group)) + 
+      xlab(xlab) + ylab(ylab) + ggtitle(main) + 
+      geom_step(aes(col = group, lty = group)) + scale_fill_discrete(guide = FALSE)
+    
+   #col <- if(length(surv.col == 1)){
+    #  scale_colour_manual(name = gr.name, values = rep(surv.col, strata))
+    #} else{
+     # scale_colour_manual(name = gr.name, values = surv.col)
+    #}
+    
+    pl <- if(surv.col[1] != 'gg.def'){
+      pl + col
+    } else {pl + scale_colour_discrete(name = gr.name)}
+    
+    line <- if(length(lty.est) == 1){
+      scale_linetype_manual(name = gr.name, values = rep(lty.est, strata))
+    } else {scale_linetype_manual(name = gr.name, values = lty.est)}
+    
+    pl <- pl + line
+    
+    pl <- if(CI == T) {
+      if(length(surv.col) > 1 && length(lty.est) > 1){
+        stop('Either surv.col or lty.est should be of length 1 in order
+             to plot 95% CI with multiple strata')
+      }else if((length(surv.col) > 1 | surv.col == 'gg.def')[1]){
+        pl + geom_ribbon(aes(ymin = low, ymax = up, fill=group),alpha = 0.3)
+      } else{pl +  geom_step(aes(y = up, lty = group), col = surv.col) +
+          geom_step(aes(y = low,lty = group), col = surv.col)}   
+    } else {pl}
+    
+    
+    pl <- if(plot.cens == T & length(dat.cens) > 0){
+      pl + geom_point(data = dat.cens, aes(y = surv), shape = cens.shape,
+                      col = cens.col)
+    } else if (plot.cens == T & length(dat.cens) == 0){
+      stop ('There are no censored observations') 
+    } else(pl)
+    
+    pl <- if(back.white == T) {pl + theme_bw()
+    } else (pl) 
+    pl
+  } 
+  pl <- if(strata == 1) {ggsurv.s(s, CI , plot.cens, surv.col ,
+                                  cens.col, lty.est, lty.ci,
+                                  cens.shape, back.white, xlab,
+                                  ylab, main) 
+  } else {ggsurv.m(s, CI, plot.cens, surv.col ,
+                   cens.col, lty.est, lty.ci,
+                   cens.shape, back.white, xlab,
+                   ylab, main)}
+  
+}
+
+# use as ggsurv.svd(kmobject, CI = TRUE)
+# will give KM curve with ribbon CI with one legend only; the legend will be as per the geom_step argument.
+```
+
+# Code to create a column with the largest /smallest of many columns in dataframe:
+
+for (i in 1:nrow(data)) {
+  data$E[i] <- min(data[i,c("A","B","C")])
+}
+
+
+
+
+```{r}
+
+# this code is a function which will create a new column E which will contain the smallest of the values of columns A,B,C in dataframe data
+
+
+
+
+
+
+#eg.
+
+library(survival)
+
+b <- lung %>% select(age)
+
+bc <- b %>% slice(1:5)
+
+bc$age2 <- c(60,89,33,55,89)
+
+for (i in 1:nrow(bc)) {
+  bc$age_min[i] <- min(bc[i,c("age","age2")])
+}
+
+```
+
+
+

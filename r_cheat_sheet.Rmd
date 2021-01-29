@@ -1,0 +1,303 @@
+---
+title: "R script:Cheat-sheet"
+date: "`r Sys.Date()`"
+author: Salil V Deo MD (svd14 at case dot edu)
+output:
+  rmdformats::readthedown:
+    highlight: kate
+    
+---
+
+
+```{r setup, include=FALSE}
+library(knitr)
+library(rmdformats)
+
+## Global options
+options(max.print="75")
+
+opts_chunk$set(echo=TRUE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+
+opts_knit$set(width=75)
+
+```
+
+
+
+This cheat-sheet is a guide to the commonly needed R-code for initial data cleaning and data restructuring. 
+
+## Importing data into Rstudio from various formats:
+
+```{r}
+library(tidyverse) # import csv
+
+library(haven) # import SAS, SPSS, STATA 
+
+library(readxl) # import excel files
+
+library(stringr); library(magrittr)
+
+```
+
+Importing syntax:
+
+*csv* -`read_csv("df.csv")`
+
+*SAS* - `read_sas("df.sas7bdat")`
+
+*STATA* - `read_dta("df.dta")`
+
+*SPSS* - `read_sav("df.sav")`
+
+*Excel* - `read_excel("df.xlxs", sheet = 1)`
+
+For excel files, the sheet argument can be either a number of a string with the name of the sheet.
+
+## Converting variable column names to lowercase:
+
+Column names can all be converted to lower or uppercase as needed.
+R is case sensitive , hence , columns *year, Year, YEAR* are actually the name of 3 uinque columns in R.
+
+
+```{r}
+
+df <- mtcars
+
+# to change to UPPER
+
+names(df) <- toupper(names(df))
+
+names(df)
+
+# to change to lower
+
+names(df) <- tolower(names(df))
+
+names(df)
+
+```
+
+
+
+```{r}
+
+# to make only first letter CAPITAL for every colname.
+
+# using the stringr library
+
+library(stringr)
+
+names(df) <- stringr::str_to_title(names(df))
+
+names(df)
+
+
+```
+
+## Look at some dplyr verbs:
+
+### Filter
+
+*Filter* helps to select rows for an argument.
+
+```{r}
+
+# again using mtcars.
+
+summary(df$Mpg)
+
+summary(df$Cyl)
+
+# now to keep only rows with Mpg < 20.
+
+df2 <- df %>% filter(Mpg < 20)
+
+summary(df2$Mpg)
+
+# to keep only Mpg < 20 and Cyl == 6
+
+df3 <- df %>% filter(Mpg < 20) %>%
+  filter(Cyl == 6)
+
+summary(df3[, c("Mpg","Cyl")]) # using summary like this can provide the summary of only those columns that you want.
+
+```
+
+### Select:- 
+
+*Select* will keep only those columns in the argument.
+
+```{r}
+
+# using whole name of columns.
+
+df4 <- df %>% select(Mpg, Cyl)
+
+str(df4) # now contains only these two columns.
+
+# now to only select according to type of column.
+# am going to convert cylinder to factor.
+
+df$Cyl <- as.factor(df$Cyl)
+
+df4 <- df %>% select_if(is.factor)
+
+str(df4)
+
+# on Cyl included as that one is the only factor in the df.
+
+df4 <- df %>% select_if(is.numeric)
+
+str(df4) # now all but Cyl is included as that is a factor.
+
+# we can also choose based on the name or part of the column name.
+
+df4 <- df %>% select(contains("Mp"))
+
+str(df4) # as only Mpg contains "Mp" that is the only column selected.
+
+df4 <- df %>% select(starts_with("W"))
+
+str(df4) # as Wt is the only column that starts with W.
+
+df4 <- df %>% select(ends_with("c"))
+
+str(df4)
+
+```
+
+### Mutate:-
+
+*Mutate* will help to create new variables. I do not use it as much.
+Rather if find $ifelse$ very useful to create variables using arguments based on another variables.
+
+```{r}
+
+summary(df)
+
+# now to create new variable gas_guzzler when Mpg < 20.
+
+df2 <- df %>% mutate(gas_guzzler = ifelse(Mpg < 20, 1, 0))
+
+str(df2) 
+
+# to use mutate, we need to create a new df. Rather than using mutate, I prefer to use base R and ifelse.
+
+df$gas_guzzler <- with(df, ifelse(Mpg < 20, 1, 0))
+
+summary(df$gas_guzzler) # so using this code, I can create new variables without having to keep creating new dataframes. I know some code to create many variables at once, but I like to create 1 variable at a time and code iteratively.
+
+
+# ifelse arguments can be nested to create as many values as needed.
+# this may be the alternative to fct_recode.
+
+df$gas_guzzler2 <- with(df, ifelse(Mpg > 30, 0 , 
+  ifelse(Mpg < 20, 1, 2)
+)) 
+
+
+df %>% count(gas_guzzler2) # do, now have this column as factor with 3 levels - 0/1/2
+
+# with this coding, the column is not converted to factor type , but there is really no need to convert it. If some functions need it only as a factor, then we can easily convert it using as.factor()...
+
+```
+
+*as.factor, as.numeric* can be used to change the type of the variable if needed. 
+
+While there are many other dplyr verbs, I have not used them very often and from my experience, are not much needed to regular data cleaning and variable creation.
+
+
+## Working with Dates:
+
+The *lubridate* package is excellent for working with dates.
+
+```{r, message = FALSE}
+library(lubridate)
+
+# get dummy dataset with dates.
+
+df <- read_csv("H:\\R_cheat_sheet\\date_df.csv")
+
+glimpse(df) 
+
+# now first to declare the columns as date formats.
+
+df$date_of_surgery <- as_date(df$date_of_surgery)
+
+df$dob <- as_date(df$dob)
+
+df$last_contact_date <- as_date(df$last_contact_date)
+  
+
+# now before we use these columns we can do some simple date 
+# function.
+
+today() # this is todays date, or when the rmarkdown was last knitted. 
+
+# Dates in R are presented by convention as ymd.
+# ymd format is unambigious as it is conventionally used for date in most software programs.
+
+ymd(20210128) # this can be used to change the numbers to dates.
+
+# to extract the day, month or year from a date.
+
+month("2019-02-10")
+
+year("2011-10-01")
+
+day("2011-10-01")
+
+
+# this can be used to create new columns...
+
+df$dob_year = year(df$dob)
+  
+head(df$dob_year, 5)
+
+# we can use month or day to similarly extract the day or month and that can be inserted into a new column.
+
+```
+
+Subtracting dates to get time in days, years.
+
+```{r}
+
+# to subtract dates.
+
+df$age_at_surgery <- (df$dob %--% df$date_of_surgery)/ddays(1)
+
+# now to convert to years, divide by 365.24
+
+df$age_years <- df$age_at_surgery/365.24 # the .24 accounts for the leap years.
+
+
+# we conventionally present age a whole number.
+
+df$age_years <- round(df$age_years, 0)
+
+summary(df$age_years) # age as whole numbers from the dob and date of surgery.
+
+# if we want to extract months, we can divide by 30.
+```
+*Lubridate* also has excellent functions to work with hh:mm:ss to calculate difference between date:times. I have not used those much.
+
+```{r}
+
+
+# to obtain age of a patient today, we can use the today function...
+
+df$cur_age <- (df$dob %--% today())/ddays(1)
+
+df$cur_age <- round((df$cur_age/365.24),0)
+
+summary(df$cur_age) # of course all patients lived, so we have a patient aged 103 years :))
+
+```
+
+
