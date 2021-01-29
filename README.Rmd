@@ -1,0 +1,22 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+library(badger)
+library(lubridate)
+```
+
+# R cheat sheet
+
+`r today()`
+
+`r badge_custom("Louis Stokes Cleveland VA Medical Center","Cleveland VA CV Research Group", "yellow")`
+
+This cheat sheet provides simple R code for data cleaning and restructuring.

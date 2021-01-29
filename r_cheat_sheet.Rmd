@@ -222,7 +222,7 @@ library(lubridate)
 
 # get dummy dataset with dates.
 
-df <- read_csv("H:\\R_cheat_sheet\\date_df.csv")
+df <- read_csv("H:\\R_cheat_sheet\\R_cheat_sheet\\date_df.csv")
 
 glimpse(df) 
 
