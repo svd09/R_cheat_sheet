@@ -41,7 +41,7 @@ library(haven) # import SAS, SPSS, STATA
 
 library(readxl) # import excel files
 
-library(stringr); library(magrittr)
+library(stringr); library(magrittr);library(ggthemes)
 
 library(naniar);library(mice);library(Amelia);library(miceadds)
 
@@ -399,6 +399,208 @@ df_long_original <- complete(imp2, include = T, "long")
 str(df_long_original) # here .imp == 0 is the original dataaset.
 
 # from this we can then use filter to get each separate dataset.
+
+```
+
+After imputation, we want to run a model and then be able to pool the results of the model.
+
+If we consider in the dataset *df* that x = postoperative hospital stay, y = procedure performed and z = zip code, then we can use zip code and procedure performed to model postoperative hospital stay.
+
+```{r}
+
+model <- with(imp2, lm(x ~ y + z))
+
+summary(model) # this will not provide pooled results.
+
+res <- mice::pool(model)
+
+model_summ <- summary(res)
+
+# the summary provide the results including estimate/coef, SE, p-value.
+# CI can be obtained using the following method:
+
+str(model_summ)
+
+
+
+```
+
+```{r}
+
+
+# pooled_ci is a function to pool lm, glm or coxph model using Rubins rules.
+# the function returns statement describing which model was fit and 
+# a tibble with covariate name, estimate, CI and p-value.
+# @parameters in the function:
+# df = fitted model fitted using imputed mids object
+# model = specify character statement of either glm, lm, or coxph
+
+pooled_ci <- function(df, model = c("glm","lm","coxph")){
+  
+  
+   stopifnot(is.data.frame(df))
+   stopifnot(is.character(model))
+  
+  if(model == "glm"){
+  est <- exp(df$estimate)
+  
+  se <- df$std.error
+  
+  lci <- exp(est - 1.96*se)
+  uci <- exp(est + 1.96*se) 
+  
+  result <- tibble(variable = df$term,
+                OR = exp(df$estimate),
+                OR_lower95 = lci, 
+                OR_upper95 = uci, 
+                p_value = df$p.value)
+  return(list(result, "results of pooling glm object"))
+  } 
+  if(model == "lm"){
+    est <- df$estimate
+    se <- df$std.error
+    
+    lci <- est - 1.96*se
+    uci <- est + 1.96*se 
+    
+    result <- tibble(variable = df$term,
+                  est = df$estimate,
+                  lower95 = lci, 
+                  upper95 = uci, 
+                  p_value = df$p.value)
+    
+    
+    return(list(result,"results of pooling lm object"))
+    
+  }
+
+if(model == "cox"){
+   
+     est <- exp(df$estimate)
+  
+  se <- df$std.error
+  
+  lci <- exp(est - 1.96*se)
+  uci <- exp(est + 1.96*se) 
+  
+  result <- tibble(variable = df$term,
+                HR = exp(df$estimate),
+                HR_lower95 = lci, 
+                HR_upper95 = uci, 
+                p_value = df$p.value)
+  
+  return(list(result, "results of pooling coxph object"))
+} 
+
+}
+
+
+```
+
+
+
+```{r}
+res <- pooled_ci(model_summ, model = "lm")
+
+res
+```
+
+The meld function in Amelia can be used if the models that we want to use are not included in the above function. In that case, the algorithm of work would be (1) get imputed datasets with mice (2) separate the datasets (3) fit model individually for each (4) make a list of the estimates and standard errors from each model (5) use meld function in Amelia to get pooled estimates with standard error and p-values.
+
+Example of this will follow later...
+
+## Plotting functions in ggplot2
+
+Create a histogram using ggplot2
+
+```{r}
+
+df <- mtcars
+
+
+ggplot(data = df, aes(x = mpg)) + 
+   geom_histogram(color = "blue", fill = "gray") +  
+# provide fill for filling bars and color for border of bars  
+   labs(title = "Histogram of MPG from mtcars dataset", x = "Count", y = "Miles Per Gallon", 
+        caption = "Data abstracted from the World Health Organisation") + 
+# labelling of the histogram
+theme(plot.title = element_text(hjust = 0.5)) + 
+# center the plot title 
+theme(plot.caption = element_text(face = "italic",size = 8)) 
+
+```
+
+When using theme from the *ggthemes*, remember that the theme will have its own default regarding font type, font size ...
+Hence, to maintain consistent format, user can create own theme using *theme_foundation* provided in theme library.
+
+## Saving ggplot2 with high resolution and custom spefications:
+
+The plot created above can now be saved with desired resolution and 
+plot dimensions and plot type.
+
+```{r}
+
+# recreate plot again and put it into an object a
+
+df <- mtcars
+
+
+a <- ggplot(data = df, aes(x = mpg)) + 
+   geom_histogram(color = "blue", fill = "gray") +  
+# provide fill for filling bars and color for border of bars  
+   labs(title = "Histogram of MPG from mtcars dataset", x = "Count", y = "Miles Per Gallon", 
+        caption = "Data abstracted from the World Health Organisation") + 
+# labelling of the histogram
+theme(plot.title = element_text(hjust = 0.5)) + 
+# center the plot title 
+theme(plot.caption = element_text(face = "italic",size = 8)) 
+
+# now to save the plot.
+
+# ggsave(a, 
+#        height = 5,
+#        width = 7,
+#        filename = "MYPATHHERE.plottype",
+#        units = "in",
+#        dpi = DESIRED_PLOT_DPI_HERE)
+
+# standard dpi for color plots should be between 600 - 1200 dpi.
+
+
+
+```
+
+## Base R method to save a ggplot2 graph 
+
+This is the base R method to save a ggplot2 graph. Naturally, it can be also used to save a base R plot. This should be the default method to save a Kaplan Meier plot created using the *ggsurvplot* function in *survminer* package as it will work when there is a risk table below the plot. The *ggsave* function will not work when there is a risk table below the KM plot created with *ggsurvplot*.
+
+```{r}
+
+# tiff('MYPATHHERE.tiff',
+#      height = 5,
+#      width = 7,
+#      device = "tiff",
+#      res = 900)
+# 
+# # PRINT GGPLOT2 OBJECT NAME HERE
+# 
+# 
+# dev.off()
+
+# to save as PDF, change call to pdf and device to pdf.
+
+# for survminer graphs---
+
+# tiff('MYPATHHERE.tiff',
+#      height = 5,
+#      width = 7,
+#      device = "tiff",
+#      res = 900)
+# 
+# print(PRINT GGPLOT2 OBJECT NAME HERE)
+# 
+# 
+# dev.off()
 
 ```
 
