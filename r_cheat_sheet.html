@@ -7,7 +7,7 @@
 
         <meta name="author" content="Salil V Deo MD (svd14 at case dot edu)" />
     
-        <meta name="date" content="2021-01-28" />
+        <meta name="date" content="2021-01-30" />
     
     <title>R script:Cheat-sheet</title>
 
@@ -1621,11 +1621,12 @@ src: url(data:application/font-sfnt;base64,AAEAAAARAQAABAAQR0RFRgs+Cz8AAjwQAAAAQ
       <li><a href="#converting-variable-column-names-to-lowercase">Converting variable column names to lowercase:</a></li>
       <li><a href="#look-at-some-dplyr-verbs">Look at some dplyr verbs:</a></li>
       <li><a href="#working-with-dates">Working with Dates:</a></li>
+      <li><a href="#missing-data">Missing data:</a></li>
       </ul>
     </div>
     <div id="postamble" data-toggle="wy-nav-shift" class="status">
                   <p class="author"><span class="glyphicon glyphicon-user"></span> Salil V Deo MD (svd14 at case dot edu)</p>
-                        <p class="date"><span class="glyphicon glyphicon-calendar"></span> 2021-01-28</p>
+                        <p class="date"><span class="glyphicon glyphicon-calendar"></span> 2021-01-30</p>
           </div>
    </div>
      
@@ -1645,7 +1646,12 @@ src: url(data:application/font-sfnt;base64,AAEAAAARAQAABAAQR0RFRgs+Cz8AAjwQAAAAQ
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(readxl)  <span class="co"># import excel files</span></span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(stringr)</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(magrittr)</span></code></pre></div>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(magrittr)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(naniar)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(mice)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(Amelia)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(miceadds)</span></code></pre></div>
 <p>Importing syntax:</p>
 <p><em>csv</em> -<code>read_csv(&quot;df.csv&quot;)</code></p>
 <p><em>SAS</em> - <code>read_sas(&quot;df.sas7bdat&quot;)</code></p>
@@ -1920,6 +1926,262 @@ $ rowid             &lt;dbl&gt; 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 1
 <span id="cb55-7"><a href="#cb55-7" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(df<span class="sc">$</span>cur_age)  <span class="co"># of course all patients lived, so we have a patient aged 103 years :))</span></span></code></pre></div>
 <pre><code>   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
   62.00   74.75   82.00   81.72   90.00  103.00 </code></pre>
+</div>
+<div id="missing-data" class="section level2">
+<h2>Missing data:</h2>
+<p><em>naniar</em> , <em>mice</em>, <em>micetools</em> and <em>Amelia</em> provide excellent functions for handling and dealing with missing data.</p>
+<div class="sourceCode" id="cb57"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a><span class="co"># create a simple dataset.</span></span>
+<span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-3"><a href="#cb57-3" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> <span class="fu">tibble</span>(<span class="at">x =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>, <span class="cn">NA</span>, <span class="dv">4</span>, <span class="dv">5</span>, <span class="dv">999</span>, <span class="dv">999</span>), <span class="at">y =</span> <span class="fu">c</span>(<span class="cn">NA</span>, <span class="cn">NA</span>, <span class="dv">3</span>, <span class="dv">4</span>, <span class="dv">5</span>, <span class="dv">999</span>, <span class="dv">999</span>, </span>
+<span id="cb57-4"><a href="#cb57-4" aria-hidden="true" tabindex="-1"></a>    <span class="dv">10</span>), <span class="at">name =</span> <span class="fu">c</span>(<span class="st">&quot;a&quot;</span>, <span class="st">&quot;b&quot;</span>, <span class="cn">NA</span>, <span class="st">&quot;c&quot;</span>, <span class="cn">NA</span>, <span class="cn">NA</span>, <span class="cn">NA</span>, <span class="st">&quot;d&quot;</span>))</span>
+<span id="cb57-5"><a href="#cb57-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-6"><a href="#cb57-6" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(df)</span></code></pre></div>
+<pre><code># A tibble: 8 x 3
+      x     y name 
+  &lt;dbl&gt; &lt;dbl&gt; &lt;chr&gt;
+1     1    NA a    
+2     2    NA b    
+3     3     3 &lt;NA&gt; 
+4    NA     4 c    
+5     4     5 &lt;NA&gt; 
+6     5   999 &lt;NA&gt; 
+7   999   999 &lt;NA&gt; 
+8   999    10 d    </code></pre>
+<div class="sourceCode" id="cb59"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a><span class="co"># determine percent missing in each variable</span></span>
+<span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-3"><a href="#cb59-3" aria-hidden="true" tabindex="-1"></a>naniar<span class="sc">::</span><span class="fu">miss_var_summary</span>(df)  <span class="co"># a nice df of number and % missing for each variable.</span></span></code></pre></div>
+<pre><code># A tibble: 3 x 3
+  variable n_miss pct_miss
+  &lt;chr&gt;     &lt;int&gt;    &lt;dbl&gt;
+1 name          4     50  
+2 y             2     25  
+3 x             1     12.5</code></pre>
+<div class="sourceCode" id="cb61"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb61-1"><a href="#cb61-1" aria-hidden="true" tabindex="-1"></a><span class="co"># however, if we see, we have have some 999 that likely are missing.  so, we need</span></span>
+<span id="cb61-2"><a href="#cb61-2" aria-hidden="true" tabindex="-1"></a><span class="co"># to conver them to missing.</span></span>
+<span id="cb61-3"><a href="#cb61-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-4"><a href="#cb61-4" aria-hidden="true" tabindex="-1"></a>df2 <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span> naniar<span class="sc">::</span><span class="fu">replace_with_na_all</span>(<span class="at">condition =</span> <span class="sc">~</span>.x <span class="sc">==</span> <span class="dv">999</span>)</span>
+<span id="cb61-5"><a href="#cb61-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-6"><a href="#cb61-6" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(df2)  <span class="co"># all 999 replaced with NA for all columns.</span></span></code></pre></div>
+<pre><code># A tibble: 8 x 3
+      x     y name 
+  &lt;dbl&gt; &lt;dbl&gt; &lt;chr&gt;
+1     1    NA a    
+2     2    NA b    
+3     3     3 &lt;NA&gt; 
+4    NA     4 c    
+5     4     5 &lt;NA&gt; 
+6     5    NA &lt;NA&gt; 
+7    NA    NA &lt;NA&gt; 
+8    NA    10 d    </code></pre>
+<div class="sourceCode" id="cb63"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb63-1"><a href="#cb63-1" aria-hidden="true" tabindex="-1"></a><span class="co"># if we want to now replace NA for a number say -99.</span></span>
+<span id="cb63-2"><a href="#cb63-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb63-3"><a href="#cb63-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb63-4"><a href="#cb63-4" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(df2)</span></code></pre></div>
+<pre><code># A tibble: 8 x 3
+      x     y name 
+  &lt;dbl&gt; &lt;dbl&gt; &lt;chr&gt;
+1     1    NA a    
+2     2    NA b    
+3     3     3 &lt;NA&gt; 
+4    NA     4 c    
+5     4     5 &lt;NA&gt; 
+6     5    NA &lt;NA&gt; 
+7    NA    NA &lt;NA&gt; 
+8    NA    10 d    </code></pre>
+<div class="sourceCode" id="cb65"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a>df3 <span class="ot">=</span> df2 <span class="sc">%&gt;%</span> <span class="fu">replace_na</span>(<span class="fu">list</span>(<span class="at">x =</span> <span class="sc">-</span><span class="dv">99</span>, <span class="at">y =</span> <span class="sc">-</span><span class="dv">99</span>))  <span class="co"># we want to replace NA with -99 as these are numeric columns.</span></span>
+<span id="cb65-2"><a href="#cb65-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb65-3"><a href="#cb65-3" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(df3)</span></code></pre></div>
+<pre><code># A tibble: 8 x 3
+      x     y name 
+  &lt;dbl&gt; &lt;dbl&gt; &lt;chr&gt;
+1     1   -99 a    
+2     2   -99 b    
+3     3     3 &lt;NA&gt; 
+4   -99     4 c    
+5     4     5 &lt;NA&gt; 
+6     5   -99 &lt;NA&gt; 
+7   -99   -99 &lt;NA&gt; 
+8   -99    10 d    </code></pre>
+<p>Now, we will use mice for imputation of a small dataset with missing values.</p>
+<div class="sourceCode" id="cb67"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb67-1"><a href="#cb67-1" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> <span class="fu">tibble</span>(<span class="at">x =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="cn">NA</span>, <span class="dv">4</span>, <span class="dv">5</span>, <span class="dv">5</span>, <span class="dv">6</span>, <span class="dv">7</span>, <span class="cn">NA</span>, <span class="cn">NA</span>, <span class="dv">4</span>, <span class="dv">5</span>, <span class="dv">6</span>), <span class="at">y =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, </span>
+<span id="cb67-2"><a href="#cb67-2" aria-hidden="true" tabindex="-1"></a>    <span class="cn">NA</span>, <span class="cn">NA</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="cn">NA</span>, <span class="dv">1</span>), <span class="at">z =</span> <span class="fu">c</span>(<span class="st">&quot;abc&quot;</span>, <span class="st">&quot;abc&quot;</span>, <span class="st">&quot;cde&quot;</span>, <span class="st">&quot;fgh&quot;</span>, <span class="cn">NA</span>, <span class="cn">NA</span>, <span class="cn">NA</span>, <span class="st">&quot;cde&quot;</span>, </span>
+<span id="cb67-3"><a href="#cb67-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;abc&quot;</span>, <span class="cn">NA</span>, <span class="st">&quot;fgh&quot;</span>, <span class="cn">NA</span>, <span class="st">&quot;fgh&quot;</span>))</span>
+<span id="cb67-4"><a href="#cb67-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb67-5"><a href="#cb67-5" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(df)</span></code></pre></div>
+<pre><code># A tibble: 13 x 3
+       x     y z    
+   &lt;dbl&gt; &lt;dbl&gt; &lt;chr&gt;
+ 1     1     0 abc  
+ 2     2     0 abc  
+ 3    NA     1 cde  
+ 4     4     1 fgh  
+ 5     5     1 &lt;NA&gt; 
+ 6     5    NA &lt;NA&gt; 
+ 7     6    NA &lt;NA&gt; 
+ 8     7     0 cde  
+ 9    NA     1 abc  
+10    NA     1 &lt;NA&gt; 
+11     4     0 fgh  
+12     5    NA &lt;NA&gt; 
+13     6     1 fgh  </code></pre>
+<div class="sourceCode" id="cb69"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a><span class="co"># this is a dataset, where each column has missing values.  x = numeric, y =</span></span>
+<span id="cb69-2"><a href="#cb69-2" aria-hidden="true" tabindex="-1"></a><span class="co"># factor, z = character vars.</span></span>
+<span id="cb69-3"><a href="#cb69-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb69-4"><a href="#cb69-4" aria-hidden="true" tabindex="-1"></a><span class="co"># before using mice it is important to set the variable as either numeric or</span></span>
+<span id="cb69-5"><a href="#cb69-5" aria-hidden="true" tabindex="-1"></a><span class="co"># factors for the vars that have numbers.  from y = 0/1 it is clear that this is</span></span>
+<span id="cb69-6"><a href="#cb69-6" aria-hidden="true" tabindex="-1"></a><span class="co"># a factor.</span></span>
+<span id="cb69-7"><a href="#cb69-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb69-8"><a href="#cb69-8" aria-hidden="true" tabindex="-1"></a>df<span class="sc">$</span>y <span class="ot">=</span> <span class="fu">factor</span>(df<span class="sc">$</span>y)</span>
+<span id="cb69-9"><a href="#cb69-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb69-10"><a href="#cb69-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb69-11"><a href="#cb69-11" aria-hidden="true" tabindex="-1"></a>imp <span class="ot">&lt;-</span> <span class="fu">mice</span>(<span class="at">data =</span> df, <span class="at">m =</span> <span class="dv">5</span>)</span></code></pre></div>
+<pre><code>
+ iter imp variable
+  1   1  x  y
+  1   2  x  y
+  1   3  x  y
+  1   4  x  y
+  1   5  x  y
+  2   1  x  y
+  2   2  x  y
+  2   3  x  y
+  2   4  x  y
+  2   5  x  y
+  3   1  x  y
+  3   2  x  y
+  3   3  x  y
+  3   4  x  y
+  3   5  x  y
+  4   1  x  y
+  4   2  x  y
+  4   3  x  y
+  4   4  x  y
+  4   5  x  y
+  5   1  x  y
+  5   2  x  y
+  5   3  x  y
+  5   4  x  y
+  5   5  x  y</code></pre>
+<div class="sourceCode" id="cb71"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb71-1"><a href="#cb71-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(imp)</span></code></pre></div>
+<pre><code>Class: mids
+Number of multiple imputations:  5 
+Imputation methods:
+       x        y        z 
+   &quot;pmm&quot; &quot;logreg&quot;       &quot;&quot; 
+PredictorMatrix:
+  x y z
+x 0 1 0
+y 1 0 0
+z 0 0 0
+Number of logged events:  1 
+  it im dep     meth out
+1  0  0     constant   z</code></pre>
+<div class="sourceCode" id="cb73"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb73-1"><a href="#cb73-1" aria-hidden="true" tabindex="-1"></a><span class="co"># get the 1st dataset.</span></span>
+<span id="cb73-2"><a href="#cb73-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb73-3"><a href="#cb73-3" aria-hidden="true" tabindex="-1"></a><span class="co"># to convert the datasets into 1 long dataset.</span></span>
+<span id="cb73-4"><a href="#cb73-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb73-5"><a href="#cb73-5" aria-hidden="true" tabindex="-1"></a>df_long <span class="ot">&lt;-</span> <span class="fu">complete</span>(imp, <span class="st">&quot;long&quot;</span>)</span>
+<span id="cb73-6"><a href="#cb73-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb73-7"><a href="#cb73-7" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(df_long, <span class="dv">10</span>)  <span class="co"># we can see from this that z column is not imputed.</span></span></code></pre></div>
+<pre><code>   .imp .id x y    z
+1     1   1 1 0  abc
+2     1   2 2 0  abc
+3     1   3 1 1  cde
+4     1   4 4 1  fgh
+5     1   5 5 1 &lt;NA&gt;
+6     1   6 5 1 &lt;NA&gt;
+7     1   7 6 0 &lt;NA&gt;
+8     1   8 7 0  cde
+9     1   9 6 1  abc
+10    1  10 5 1 &lt;NA&gt;</code></pre>
+<div class="sourceCode" id="cb75"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb75-1"><a href="#cb75-1" aria-hidden="true" tabindex="-1"></a><span class="co"># mice cannot impute for characters.  we need to convert the character variable</span></span>
+<span id="cb75-2"><a href="#cb75-2" aria-hidden="true" tabindex="-1"></a><span class="co"># into a numeric factor variable prior to imputation.</span></span>
+<span id="cb75-3"><a href="#cb75-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb75-4"><a href="#cb75-4" aria-hidden="true" tabindex="-1"></a>df<span class="sc">$</span>z[df<span class="sc">$</span>z <span class="sc">==</span> <span class="st">&quot;abc&quot;</span>] <span class="ot">&lt;-</span> <span class="dv">1</span></span>
+<span id="cb75-5"><a href="#cb75-5" aria-hidden="true" tabindex="-1"></a>df<span class="sc">$</span>z[df<span class="sc">$</span>z <span class="sc">==</span> <span class="st">&quot;cde&quot;</span>] <span class="ot">&lt;-</span> <span class="dv">2</span></span>
+<span id="cb75-6"><a href="#cb75-6" aria-hidden="true" tabindex="-1"></a>df<span class="sc">$</span>z[df<span class="sc">$</span>z <span class="sc">==</span> <span class="st">&quot;fgh&quot;</span>] <span class="ot">&lt;-</span> <span class="dv">3</span></span>
+<span id="cb75-7"><a href="#cb75-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb75-8"><a href="#cb75-8" aria-hidden="true" tabindex="-1"></a>df<span class="sc">$</span>z <span class="ot">&lt;-</span> <span class="fu">factor</span>(df<span class="sc">$</span>z, <span class="at">levels =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>), <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">&quot;abc&quot;</span>, <span class="st">&quot;cde&quot;</span>, <span class="st">&quot;fgh&quot;</span>))</span>
+<span id="cb75-9"><a href="#cb75-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb75-10"><a href="#cb75-10" aria-hidden="true" tabindex="-1"></a>imp2 <span class="ot">&lt;-</span> <span class="fu">mice</span>(<span class="at">data =</span> df, <span class="at">m =</span> <span class="dv">5</span>)</span></code></pre></div>
+<pre><code>
+ iter imp variable
+  1   1  x  y  z
+  1   2  x  y  z
+  1   3  x  y  z
+  1   4  x  y  z
+  1   5  x  y  z
+  2   1  x  y  z
+  2   2  x  y  z
+  2   3  x  y  z
+  2   4  x  y  z
+  2   5  x  y  z
+  3   1  x  y  z
+  3   2  x  y  z
+  3   3  x  y  z
+  3   4  x  y  z
+  3   5  x  y  z
+  4   1  x  y  z
+  4   2  x  y  z
+  4   3  x  y  z
+  4   4  x  y  z
+  4   5  x  y  z
+  5   1  x  y  z
+  5   2  x  y  z
+  5   3  x  y  z
+  5   4  x  y  z
+  5   5  x  y  z</code></pre>
+<div class="sourceCode" id="cb77"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb77-1"><a href="#cb77-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(imp2)</span></code></pre></div>
+<pre><code>Class: mids
+Number of multiple imputations:  5 
+Imputation methods:
+        x         y         z 
+    &quot;pmm&quot;  &quot;logreg&quot; &quot;polyreg&quot; 
+PredictorMatrix:
+  x y z
+x 0 1 1
+y 1 0 1
+z 1 1 0</code></pre>
+<div class="sourceCode" id="cb79"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb79-1"><a href="#cb79-1" aria-hidden="true" tabindex="-1"></a><span class="co"># now looking at summary, it is clear that all variables with missing values have</span></span>
+<span id="cb79-2"><a href="#cb79-2" aria-hidden="true" tabindex="-1"></a><span class="co"># not been imputed. mice uses pmm for numeric (var x)/ integers and logreg method</span></span>
+<span id="cb79-3"><a href="#cb79-3" aria-hidden="true" tabindex="-1"></a><span class="co"># for factors (var y). if the variable contains more than two levels, then it</span></span>
+<span id="cb79-4"><a href="#cb79-4" aria-hidden="true" tabindex="-1"></a><span class="co"># uses polyreg (var z)</span></span>
+<span id="cb79-5"><a href="#cb79-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb79-6"><a href="#cb79-6" aria-hidden="true" tabindex="-1"></a>df_long2 <span class="ot">&lt;-</span> <span class="fu">complete</span>(imp2, <span class="st">&quot;long&quot;</span>)</span>
+<span id="cb79-7"><a href="#cb79-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb79-8"><a href="#cb79-8" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(df_long2, <span class="dv">10</span>)  <span class="co"># now we can see that there is no missing data.</span></span></code></pre></div>
+<pre><code>   .imp .id x y   z
+1     1   1 1 0 abc
+2     1   2 2 0 abc
+3     1   3 7 1 cde
+4     1   4 4 1 fgh
+5     1   5 5 1 fgh
+6     1   6 5 0 fgh
+7     1   7 6 1 fgh
+8     1   8 7 0 cde
+9     1   9 4 1 abc
+10    1  10 6 1 cde</code></pre>
+<div class="sourceCode" id="cb81"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb81-1"><a href="#cb81-1" aria-hidden="true" tabindex="-1"></a>naniar<span class="sc">::</span><span class="fu">miss_var_summary</span>(df_long2)  <span class="co"># confirmed.</span></span></code></pre></div>
+<pre><code># A tibble: 5 x 3
+  variable n_miss pct_miss
+  &lt;chr&gt;     &lt;int&gt;    &lt;dbl&gt;
+1 .imp          0        0
+2 .id           0        0
+3 x             0        0
+4 y             0        0
+5 z             0        0</code></pre>
+<div class="sourceCode" id="cb83"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb83-1"><a href="#cb83-1" aria-hidden="true" tabindex="-1"></a><span class="co"># to include the original dataset with the long formatted imputed datasets.</span></span>
+<span id="cb83-2"><a href="#cb83-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb83-3"><a href="#cb83-3" aria-hidden="true" tabindex="-1"></a>df_long_original <span class="ot">&lt;-</span> <span class="fu">complete</span>(imp2, <span class="at">include =</span> T, <span class="st">&quot;long&quot;</span>)</span>
+<span id="cb83-4"><a href="#cb83-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb83-5"><a href="#cb83-5" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(df_long_original)  <span class="co"># here .imp == 0 is the original dataaset.</span></span></code></pre></div>
+<pre><code>&#39;data.frame&#39;:   78 obs. of  5 variables:
+ $ .imp: int  0 0 0 0 0 0 0 0 0 0 ...
+ $ .id : int  1 2 3 4 5 6 7 8 9 10 ...
+ $ x   : num  1 2 NA 4 5 5 6 7 NA NA ...
+ $ y   : Factor w/ 2 levels &quot;0&quot;,&quot;1&quot;: 1 1 2 2 2 NA NA 1 2 2 ...
+ $ z   : Factor w/ 3 levels &quot;abc&quot;,&quot;cde&quot;,&quot;fgh&quot;: 1 1 2 3 NA NA NA 2 1 NA ...</code></pre>
+<div class="sourceCode" id="cb85"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb85-1"><a href="#cb85-1" aria-hidden="true" tabindex="-1"></a><span class="co"># from this we can then use filter to get each separate dataset.</span></span></code></pre></div>
 </div>
 </div>
 

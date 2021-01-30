@@ -43,6 +43,8 @@ library(readxl) # import excel files
 
 library(stringr); library(magrittr)
 
+library(naniar);library(mice);library(Amelia);library(miceadds)
+
 ```
 
 Importing syntax:
@@ -300,4 +302,103 @@ summary(df$cur_age) # of course all patients lived, so we have a patient aged 10
 
 ```
 
+## Missing data:
+
+*naniar* , *mice*, *micetools* and *Amelia* provide excellent functions for handling and dealing with missing data.
+
+```{r}
+
+# create a simple dataset.
+
+df <- tibble(x = c(1,2,3,NA,4,5,999,999),
+             y = c(NA,NA,3,4,5,999,999,10),
+             name = c("a","b",NA,"c",NA,NA,NA,"d"))
+
+print(df)
+
+
+# determine percent missing in each variable
+
+naniar::miss_var_summary(df) # a nice df of number and % missing for each variable.
+
+# however, if we see, we have have some 999 that likely are missing.
+# so, we need to conver them to missing.
+
+df2 <- df %>% naniar::replace_with_na_all( condition = ~.x == 999)
+
+print(df2) # all 999 replaced with NA for all columns.
+
+# if we want to now replace NA for a number say -99.
+
+
+print(df2)
+
+df3 = df2 %>% replace_na(list(x = -99, y = -99)) # we want to replace NA with -99 as these are numeric columns.
+
+print(df3)
+
+```
+
+Now, we will use mice for imputation of a small dataset with missing values.
+
+```{r}
+
+df <- tibble(x = c(1,2,NA,4,5,5,6,7,NA,NA,4,5,6),
+             y = c(0,0,1,1,1,NA,NA,0,1,1,0,NA,1),
+             z = c("abc","abc","cde","fgh",NA,NA,NA,"cde","abc",NA,"fgh",NA,"fgh"))
+
+print(df)
+
+
+# this is a dataset, where each column has missing values.
+# x = numeric, y = factor, z = character vars.
+
+# before using mice it is important to set the variable as either numeric or factors for the vars that have numbers.
+# from y = 0/1 it is clear that this is a factor.
+
+df$y = factor(df$y)
+
+
+imp <- mice(data = df, m = 5)
+
+summary(imp)
+
+# get the 1st dataset.
+
+# to convert the datasets into 1 long dataset.
+
+df_long <- complete(imp, "long")
+
+head(df_long,10) # we can see from this that z column is not imputed.
+# mice cannot impute for characters.
+# we need to convert the character variable into a numeric factor variable prior to imputation.
+
+df$z[df$z == "abc"]<- 1
+df$z[df$z == "cde"]<- 2
+df$z[df$z == "fgh"]<- 3
+
+df$z <- factor(df$z, levels = c(1,2,3), labels = c('abc','cde','fgh'))
+               
+imp2 <- mice(data = df, m = 5)
+
+summary(imp2)
+               
+# now looking at summary, it is clear that all variables with missing values have not been imputed. mice uses pmm for numeric (var x)/ integers and logreg method for factors (var y). if the variable contains more than two levels, then it uses polyreg (var z)
+
+df_long2 <- complete(imp2, "long")
+
+head(df_long2,10) # now we can see that there is no missing data.
+
+naniar::miss_var_summary(df_long2) # confirmed.
+
+
+# to include the original dataset with the long formatted imputed datasets.
+
+df_long_original <- complete(imp2, include = T, "long")
+
+str(df_long_original) # here .imp == 0 is the original dataaset.
+
+# from this we can then use filter to get each separate dataset.
+
+```
 
