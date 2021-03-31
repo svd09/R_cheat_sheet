@@ -44,6 +44,7 @@ library(readxl) # import excel files
 library(stringr); library(magrittr);library(ggthemes)
 
 library(naniar);library(mice);library(Amelia);library(miceadds)
+library(data.table)
 
 ```
 
@@ -603,4 +604,82 @@ This is the base R method to save a ggplot2 graph. Naturally, it can be also use
 # dev.off()
 
 ```
+
+## Moving columns around in the dataset
+
+If we want to move columns around to keep those use more in the front
+
+```{r}
+
+moveme <- function (invec, movecommand) {
+  movecommand <- lapply(strsplit(strsplit(movecommand, ";")[[1]], 
+                                 ",|\\s+"), function(x) x[x != ""])
+  movelist <- lapply(movecommand, function(x) {
+    Where <- x[which(x %in% c("before", "after", "first", 
+                              "last")):length(x)]
+    ToMove <- setdiff(x, Where)
+    list(ToMove, Where)
+  })
+  myVec <- invec
+  for (i in seq_along(movelist)) {
+    temp <- setdiff(myVec, movelist[[i]][[1]])
+    A <- movelist[[i]][[2]][1]
+    if (A %in% c("before", "after")) {
+      ba <- movelist[[i]][[2]][2]
+      if (A == "before") {
+        after <- match(ba, temp) - 1
+      }
+      else if (A == "after") {
+        after <- match(ba, temp)
+      }
+    }
+    else if (A == "first") {
+      after <- 0
+    }
+    else if (A == "last") {
+      after <- length(myVec)
+    }
+    myVec <- append(temp, values = movelist[[i]][[1]], after = after)
+  }
+  myVec
+}
+
+# this is primarily for vectors 
+# eg. moveMe(names(df),"g first") = will insert g as the first column
+# moveMe(names(df), "g first; a last; e before c") = will do exactly as written in the code
+# for dataframes , we need to use: df[moveMe(names(df),"g first")]
+```
+
+
+```{r}
+
+df <- mtcars
+
+names(mtcars)
+
+df2 <- df[moveme(names(df), "disp first")]
+
+names(df2) # now df2 contains disp as the first column.
+
+df2 <- df[moveme(names(df), "drat last")]
+
+names(df2) # now drat is last
+```
+ 
+*moveMe* function will move the column to the first or last position of the dataset.
+
+## Example using data.table package which has a function similar to the LIKE in SQL.
+
+```{r}
+## Create the data.table:
+DT = data.table(Name=c("Mary","George","Martha"), Salary=c(2,3,4))
+
+## Subset the DT table where the Name column is like "Mar%":
+DT[Name %like% "^Mar"]
+##      Name Salary
+## 1:   Mary      2
+## 2: Martha      4
+
+```
+
 

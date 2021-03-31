@@ -15,7 +15,7 @@ library(lubridate)
 
 # R cheat sheet
 
-`r today()`
+`r Sys.Date()`
 
 `r badge_custom("Louis Stokes Cleveland VA Medical Center","Cleveland VA CV Research Group", "yellow")`
 
